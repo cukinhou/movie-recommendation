@@ -1,0 +1,257 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>movierec.movie_recommender &#8212; MovieRec 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">MovieRec 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for movierec.movie_recommender</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This class implements a simple movie recommendation system</span>
+<span class="sd">based on Singular Value Decomposition (SVD). A matrix &#39;M&#39;</span>
+<span class="sd">with values 1 (seen) and 0 (not seen), as a way of rating,</span>
+<span class="sd">is created out of the input data. This matrix is factorize</span>
+<span class="sd">and reconstructed using SVD. This method allows to reduce</span>
+<span class="sd">the influence of noise and enhacie popular trends in the data.</span>
+
+<span class="sd">author: Javier Nistal</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+
+<div class="viewcode-block" id="MovieRecommender"><a class="viewcode-back" href="../../rst/movierec.html#movierec.movie_recommender.MovieRecommender">[docs]</a><span class="k">class</span> <span class="nc">MovieRecommender</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extracts and formats the users and movies data</span>
+
+<span class="sd">        :type data: dict</span>
+<span class="sd">        :param data: movie/user info</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="s1">&#39;movies&#39;</span> <span class="ow">and</span> <span class="s1">&#39;users&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> \
+            <span class="s1">&#39;Input data does not follow the expected structure: &#39;</span> \
+            <span class="s1">&#39;data = dict{&quot;movies&quot;: [{movie_ids: movie_name}], &quot;users&quot;: [</span><span class="si">{}</span><span class="s1">]}&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_movies</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;movies&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_users</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">movies</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;movies&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">usr_info</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_users</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_format_data</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">usr_info</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rating_vector</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="nb">print</span> <span class="s1">&#39;recommender created&#39;</span>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="MovieRecommender.compute_svd"><a class="viewcode-back" href="../../rst/movierec.html#movierec.movie_recommender.MovieRecommender.compute_svd">[docs]</a>    <span class="k">def</span> <span class="nf">compute_svd</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes Singular Value Decomposition (SVD) of the input matrix.</span>
+
+<span class="sd">        :type m: array_array</span>
+<span class="sd">        :param m: input matrix</span>
+
+<span class="sd">        :rtype m_rec: pandas.DataFrame</span>
+<span class="sd">        :return m_rec: reconstructed matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">U</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">full_matrices</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">m_rec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">V</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">m_rec</span></div>
+
+<div class="viewcode-block" id="MovieRecommender.get_movie_title"><a class="viewcode-back" href="../../rst/movierec.html#movierec.movie_recommender.MovieRecommender.get_movie_title">[docs]</a>    <span class="k">def</span> <span class="nf">get_movie_title</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the name of a movie identified by its ID</span>
+
+<span class="sd">        :type mid: Int</span>
+<span class="sd">        :param mid: movie ID</span>
+
+<span class="sd">        :returns m_name: name of the movie</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">movies</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">mid</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="MovieRecommender.get_movie_titles"><a class="viewcode-back" href="../../rst/movierec.html#movierec.movie_recommender.MovieRecommender.get_movie_titles">[docs]</a>    <span class="k">def</span> <span class="nf">get_movie_titles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mids</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the titles of a set of movies</span>
+
+<span class="sd">        :type mids: list_ints</span>
+<span class="sd">        :param mids: movie IDs</span>
+
+<span class="sd">        :returns: movie titles</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_movie_title</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">mids</span>
+        <span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mids</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span></div>
+
+    <span class="k">def</span> <span class="nf">_apply_format_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">field</span><span class="o">=</span><span class="s1">&#39;movies&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies function &#39;f&#39; on each element of &#39;field&#39; in data</span>
+
+<span class="sd">        :type data: array_dict</span>
+<span class="sd">        :param data: input data</span>
+
+<span class="sd">        :type f: function</span>
+<span class="sd">        :param f: method to apply to each item</span>
+
+<span class="sd">        :type field: str</span>
+<span class="sd">        :param field: field of data</span>
+
+<span class="sd">        :rtype: pandas.Dataframe</span>
+<span class="sd">        :returns: formatted data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="nb">map</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">field</span><span class="p">]),</span> <span class="n">data</span>
+            <span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_rating_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mids</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets to &#39;1&#39; (rating) the movies seen by a certain user</span>
+
+<span class="sd">        :type mids: list_int</span>
+<span class="sd">        :param mids: movie IDs</span>
+
+<span class="sd">        :rtype ratings: pandas.Series</span>
+<span class="sd">        :return ratings: movie ratings (1/0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ratings</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_movies</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">ratings</span><span class="p">[</span><span class="n">mids</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">ratings</span>
+
+<div class="viewcode-block" id="MovieRecommender.select_n_best_movies"><a class="viewcode-back" href="../../rst/movierec.html#movierec.movie_recommender.MovieRecommender.select_n_best_movies">[docs]</a>    <span class="k">def</span> <span class="nf">select_n_best_movies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p_ratings</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Selects the n best rated movies from the prediction</span>
+
+<span class="sd">        :type p_ratings: pandas.Series</span>
+<span class="sd">        :param p_ratings: predicted ratings</span>
+
+<span class="sd">        :type n: int</span>
+<span class="sd">        :param n: number of output movies</span>
+
+<span class="sd">        :returns: n sorted predicted ratings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">p_ratings</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">index</span></div>
+
+<div class="viewcode-block" id="MovieRecommender.add_user"><a class="viewcode-back" href="../../rst/movierec.html#movierec.movie_recommender.MovieRecommender.add_user">[docs]</a>    <span class="k">def</span> <span class="nf">add_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mids</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds a new user and its ratings.</span>
+
+<span class="sd">        :type mids: list_int</span>
+<span class="sd">        :param mids: IDs of movies watched by user</span>
+
+<span class="sd">        :rtype uid: int</span>
+<span class="sd">        :return uid: user identifier</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_users</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_users</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rating_vector</span><span class="p">(</span><span class="n">mids</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">usr_info</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">mids</span>
+        <span class="k">return</span> <span class="n">uid</span></div>
+
+<div class="viewcode-block" id="MovieRecommender.recommend"><a class="viewcode-back" href="../../rst/movierec.html#movierec.movie_recommender.MovieRecommender.recommend">[docs]</a>    <span class="k">def</span> <span class="nf">recommend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mids</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the algorithm and provides recommendation for a given</span>
+<span class="sd">        input movie query.</span>
+
+<span class="sd">        :type mids: list_int</span>
+<span class="sd">        :param mids: movie IDs</span>
+
+<span class="sd">        :rtype: pandas.Series_str</span>
+<span class="sd">        :returns: recommended movie titles</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_user</span><span class="p">(</span><span class="n">mids</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">m_rec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_svd</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="n">m_rec</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">m_rec</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+
+        <span class="n">p_ratings</span> <span class="o">=</span> <span class="n">m_rec</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span>
+        <span class="n">p_ratings</span><span class="p">[</span><span class="n">mids</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">best_rec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_n_best_movies</span><span class="p">(</span><span class="n">p_ratings</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_movie_titles</span><span class="p">(</span><span class="n">best_rec</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">MovieRec 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, J. Nistal Hurlé.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.1.
+    </div>
+  </body>
+</html>
