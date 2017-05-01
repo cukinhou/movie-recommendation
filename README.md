@@ -7,7 +7,7 @@ Singular Value Decomposition (SVD). Given a set of
 SVD fills unrated movies based on the ratings of 
 other users. Usage::
 
-    cd [path]/MovieRecomender
+    cd [path]/MovieRecommender
 
     python movierec/main.py -u [movie_IDs] -p [path_to_json_file]
 
